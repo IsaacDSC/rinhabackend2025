@@ -1,0 +1,43 @@
+### external endpoint create payment
+POST http://localhost:3333/payments
+Content-Type: application/json
+
+{
+  "correlationId": "50cacf5b-5a42-4e3d-b1f2-17d8f7f44659",
+  "amount": 19.90
+}
+
+### external endpoint get summary
+GET http://localhost:3333/payments-summary
+Content-Type: application/json
+
+
+################################################################################################
+
+### internal endpoint to receive payment event
+POST http://localhost:3333/worker-queue/payment/received
+Content-Type: application/json
+
+{
+  "ID": "453e1687-c5f7-420c-bcd8-19acd59b1dda",
+  "CorrelationID": "4a7901b8-7d26-4d9d-aa19-4dc1c7cf60b3",
+  "Amount": 1990,
+  "CreatedAt": "2025-08-23T16:44:26.286Z"
+}
+
+###
+GET http://localhost:8001/payments/service-health
+Content-Type: application/json
+
+###
+GET http://localhost:8002/payments/service-health
+Content-Type: application/json
+
+###
+POST http://localhost:8001/payments
+Content-Type: application/json
+
+{
+  "correlationId": "6e40f735-e368-460f-803b-2dd6eac1e58c",
+  "amount": 19.90
+}

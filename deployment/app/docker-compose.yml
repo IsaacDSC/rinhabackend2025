@@ -1,0 +1,144 @@
+services:
+  app_01:
+    build:
+      context: ../../.
+      target: final
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      payment-processor-default:
+        condition: service_started
+      payment-processor-fallback:
+        condition: service_started
+    ports:
+      - 3001:3333
+    environment:
+      - GQUEUE_URL=http://localhost:8080
+      - APP_PORT=3333
+      - REDIS_URL=redis:6379
+      - DATABASE_URL=idsc:admin@tcp(mysql:3306)/rinhabackend
+      - PROCESSOR_DEFAULT_URL=http://payment-processor-default:8080
+      - PROCESSOR_FALLBACK_URL=http://payment-processor-fallback:8080
+    networks:
+      - default
+      - payment-processor
+    deploy:
+      resources:
+        limits:
+          cpus: "0.15"
+          memory: "42MB"
+  app_02:
+    build:
+      context: ../../.
+      target: final
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      payment-processor-default:
+        condition: service_started
+      payment-processor-fallback:
+        condition: service_started
+    ports:
+      - 3002:3333
+    environment:
+      - GQUEUE_URL=http://localhost:8080
+      - APP_PORT=3333
+      - REDIS_URL=redis:6379
+      - DATABASE_URL=idsc:admin@tcp(mysql:3306)/rinhabackend
+      - PROCESSOR_DEFAULT_URL=http://payment-processor-default:8080
+      - PROCESSOR_FALLBACK_URL=http://payment-processor-fallback:8080
+    networks:
+      - default
+      - payment-processor
+    deploy:
+      resources:
+        limits:
+          cpus: "0.15"
+          memory: "42MB"
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql_db
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: rinhabackend
+      MYSQL_USER: idsc
+      MYSQL_PASSWORD: admin
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./table.sql:/docker-entrypoint-initdb.d/01-init.sql
+    networks:
+      - default
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-padmin" ]
+      timeout: 20s
+      retries: 10
+      interval: 30s
+      start_period: 60s
+    command: --default-authentication-plugin=mysql_native_password
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis_cache
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 3s
+      retries: 5
+      interval: 10s
+      start_period: 30s
+
+  payment-processor-default:
+    extends:
+      file: ../payment-processor/docker-compose.yml
+      service: payment-processor-1
+    networks:
+      - payment-processor
+      - payment-processor-db
+
+  payment-processor-fallback:
+    extends:
+      file: ../payment-processor/docker-compose.yml
+      service: payment-processor-2
+    networks:
+      - payment-processor
+      - payment-processor-db
+
+  payment-processor-db-1:
+    extends:
+      file: ../payment-processor/docker-compose.yml
+      service: payment-processor-db-1
+    networks:
+      - payment-processor-db
+
+  payment-processor-db-2:
+    extends:
+      file: ../payment-processor/docker-compose.yml
+      service: payment-processor-db-2
+    networks:
+      - payment-processor-db
+
+networks:
+  default:
+    driver: bridge
+  payment-processor:
+    external: true
+  payment-processor-db:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  redis_data:
+  postgres-socket-01:
+  postgres-socket-02:
